@@ -3,29 +3,36 @@
 #include <BluetoothSerial.h>
 #include <Bounce2.h>
 
+
+BluetoothSerial BT;
 Bounce btn = Bounce();
 
 #define botao 23
 #define led 2
 
 
-BluetoothSerial BT;
 
-char sinalAnterior;
-bool estadoLed = false;
+unsigned long intervalo = 3000;
+unsigned long tempoAnteriorPisca = 0;
+unsigned long tempoPressionou = 0;
 bool piscando = false;
+bool pressionado = false;
+bool estadoBotao = false;
+bool estadoLed = false;
+
+
 
 // F4:65:0B:55:4F:26
 
-unsigned long tempoAnterior = 0;
-unsigned long intervalo = 250;
+
+
 
 void setup()
 {
     Serial.begin(115200);
     Serial.setTimeout(5000);
     pinMode(led, OUTPUT);
-    btn.attach( botao,  INPUT_PULLUP ); 
+    btn.attach( botao,  INPUT_PULLUP );
 
     if (BT.begin("BtSlaveGi"))
     {
@@ -42,25 +49,50 @@ void setup()
 void loop()
 {
 
-     btn.update();
-     if (BT.available()){
+    btn.update();
 
-         char sinalRecebido = BT.read();
+    unsigned long tempoAtual = millis();
 
-         Serial.printf("Sinal recebido: %c\n", sinalRecebido);
+    if (BT.available()) //verifica se tem info no bt e mostra na serial
+    {
+        String msgRecebida = BT.readStringUntil('\n');
+        msgRecebida.trim();
+        Serial.printf("Mensagem recebida: %s", msgRecebida);
+    
+        if (msgRecebida =="L"){
+            piscando = false;
+            estadoLed = true;
+        }
+        else if (msgRecebida == "D"){
+            piscando = false;
+            estadoLed = false;
+        } 
+        else if (msgRecebida=="P"){
+            piscando=true;
+        }      
+  }
 
-         if(sinalRecebido == '1'){
-             digitalWrite(led, LOW);
-         } else if(sinalRecebido == '0'){
-             digitalWrite(led, HIGH);
-         }
-
+    if (piscando){ 
+        if (tempoAtual - tempoAnteriorPisca >= intervalo){
+            estadoLed = !estadoLed;  
+            tempoAnteriorPisca = tempoAtual;
+        }
     }
 
-    if (Serial.available())
-    {
-        char sinalMandado = Serial.read();
-        BT.println(sinalMandado);
+    digitalWrite(led, estadoLed);
+
+
+    if (btn.fell()){
+       tempoPressionou = tempoAtual;
+       pressionado = !pressionado;
+       BT.println(pressionado ? "L" : "D");
+    }
+    
+    if(btn.read() == LOW && tempoAtual - tempoPressionou >= 3000){
+        BT.println("P");
+        Serial.println("Enviado: P");
+        //pressionado = true;
+        tempoPressionou = tempoAtual;
     }
 }
 
