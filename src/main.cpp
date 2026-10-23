@@ -1,24 +1,37 @@
 // --------------------------------- BLUETOOTH SLAVE -------------------------------------
 #include <Arduino.h>
 #include <BluetoothSerial.h>
-#include <Bounce2.h>
+//#include <Bounce2.h>
+#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
 
 
 BluetoothSerial BT;
-Bounce btn = Bounce();
 
-#define botao 23
-#define led 2
+//botao para led & led
+//Bounce btn = Bounce();
+//#define botao 23
+//#define led 2
+
+#define tipoDHT DHT22
+#define pinDHT 4                            
 
 
+DHT dht(pinDHT, tipoDHT);
+
+LiquidCrystal_I2C lcd (0x27, 20, 4);
 
 unsigned long intervalo = 3000;
-unsigned long tempoAnteriorPisca = 0;
-unsigned long tempoPressionou = 0;
-bool piscando = false;
-bool pressionado = false;
-bool estadoBotao = false;
-bool estadoLed = false;
+unsigned long tempoAnterior = 0;
+//tempo usado no ex. led
+//unsigned long tempoAnteriorPisca = 0;
+//unsigned long tempoPressionou = 0;
+
+//bools usados em ex. led
+//bool piscando = false;
+//bool pressionado = false;
+//bool estadoBotao = false;
+//bool estadoLed = false;
 
 
 
@@ -31,8 +44,15 @@ void setup()
 {
     Serial.begin(115200);
     Serial.setTimeout(5000);
-    pinMode(led, OUTPUT);
-    btn.attach( botao,  INPUT_PULLUP );
+    dht.begin();
+
+    lcd.init();
+    lcd.backlight();
+
+
+    //led ex. led & botao
+    //pinMode(led, OUTPUT);
+    //btn.attach( botao,  INPUT_PULLUP );
 
     if (BT.begin("BtSlaveGi"))
     {
@@ -48,8 +68,12 @@ void setup()
 
 void loop()
 {
+    //upd botao
+    //btn.update();
 
-    btn.update();
+
+    float tempC = dht.readTemperature();
+    float umi = dht.readHumidity();
 
     unsigned long tempoAtual = millis();
 
@@ -59,41 +83,46 @@ void loop()
         msgRecebida.trim();
         Serial.printf("Mensagem recebida: %s", msgRecebida);
     
-        if (msgRecebida =="L"){
-            piscando = false;
-            estadoLed = true;
-        }
-        else if (msgRecebida == "D"){
-            piscando = false;
-            estadoLed = false;
-        } 
-        else if (msgRecebida=="P"){
-            piscando=true;
-        }      
+
+        //msg recebida led
+        //if (msgRecebida =="L"){
+        //    piscando = false;
+        //    estadoLed = true;
+        //}
+        //else if (msgRecebida == "D"){
+        //    piscando = false;
+        //    estadoLed = false;
+        //} 
+        //else if (msgRecebida=="P"){
+        //    piscando=true;
+        //}
+        
+        
   }
 
-    if (piscando){ 
-        if (tempoAtual - tempoAnteriorPisca >= intervalo){
-            estadoLed = !estadoLed;  
-            tempoAnteriorPisca = tempoAtual;
-        }
-    }
+    //piscando ex. led
+    //if (piscando){ 
+    //    if (tempoAtual - tempoAnteriorPisca >= intervalo){
+    //        estadoLed = !estadoLed;  
+    //        tempoAnteriorPisca = tempoAtual;
+    //    }
+    //}
 
-    digitalWrite(led, estadoLed);
+    //digitalWrite(led, estadoLed);
 
 
-    if (btn.fell()){
-       tempoPressionou = tempoAtual;
-       pressionado = !pressionado;
-       BT.println(pressionado ? "L" : "D");
-    }
+    //if (btn.fell()){
+    //   tempoPressionou = tempoAtual;
+    //   pressionado = !pressionado;
+    //   BT.println(pressionado ? "L" : "D");
+    //}
     
-    if(btn.read() == LOW && tempoAtual - tempoPressionou >= 3000){
-        BT.println("P");
-        Serial.println("Enviado: P");
+    //if(btn.read() == LOW && tempoAtual - tempoPressionou >= 3000){
+    //    BT.println("P");
+    //    Serial.println("Enviado: P");
         //pressionado = true;
-        tempoPressionou = tempoAtual;
-    }
+    //    tempoPressionou = tempoAtual;
+    //}
 }
 
     //if (BT.available()) // Verifica se tem info no BT e mostra na Serial
